@@ -1,0 +1,72 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  createdAt DateTime @default(now())
+  orders    Order[]
+}
+
+model Order {
+  id                 String           @id @default(cuid())
+  orderNumber        String           @unique
+  customerId         String
+  customer           Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  status             String           // "PENDING", "PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"
+  totalAmount        Float
+  currency           String           @default("USD")
+  shippingStreet     String
+  shippingCity       String
+  shippingState      String
+  shippingPostalCode String
+  shippingCountry    String
+  cancelReason       String?
+  cancelledAt        DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  items              OrderItem[]
+  tracking           CourierTracking?
+  auditLogs          AuditLog[]
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productName String
+  sku         String
+  quantity    Int
+  unitPrice   Float
+}
+
+model CourierTracking {
+  id                String   @id @default(cuid())
+  orderId           String   @unique
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  courierName       String   // e.g. "FedEx Express", "DHL Express"
+  trackingNumber    String   @unique
+  currentStatus     String   // "Label Created", "In Transit", "Out for Delivery", "Delivered"
+  currentLocation   String
+  estimatedDelivery String
+  eventsJson        String   // JSON string of tracking checkpoints
+  updatedAt         DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  orderId     String?
+  order       Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  action      String   // "ADDRESS_UPDATED", "ORDER_CANCELLED", "ESCALATED", "STATUS_INQUIRY"
+  details     String
+  performedBy String   // "AI_AGENT" or "CUSTOMER"
+  createdAt   DateTime @default(now())
+}
