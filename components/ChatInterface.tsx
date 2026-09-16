@@ -8,16 +8,20 @@ import {
   Sparkles,
   Loader2,
   Trash2,
-  HelpCircle,
   CheckCircle,
   Truck,
   Package,
+  MapPin,
+  XCircle,
+  ShieldAlert,
+  ArrowUp,
+  CornerDownLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ToolActivityBadge from "./ToolActivityBadge";
 import TrackingTimeline, { TrackingInfo } from "./TrackingTimeline";
 import OrderCard, { OrderData } from "./OrderCard";
-import { ToolExecutionRecord } from "@/lib/gemini/executor";
+import { ToolExecutionRecord } from "@/lib/agent/executor";
 
 export interface ChatMessage {
   id: string;
@@ -38,25 +42,35 @@ interface ChatInterfaceProps {
 
 const QUICK_SUGGESTIONS = [
   {
-    label: "📍 Track ORD-1002",
+    icon: Truck,
+    label: "Track ORD-1002",
     prompt: "Track courier shipment for order ORD-1002",
+    color: "hover:border-sky-500/40 hover:text-sky-300",
   },
   {
-    label: "🏠 Update Address (ORD-1001)",
+    icon: MapPin,
+    label: "Update Address (ORD-1001)",
     prompt:
       "Please change the delivery address for order ORD-1001 to 742 Evergreen Terrace, Springfield, OR 97477",
+    color: "hover:border-emerald-500/40 hover:text-emerald-300",
   },
   {
-    label: "❌ Cancel Order (ORD-1001)",
+    icon: XCircle,
+    label: "Cancel Order (ORD-1001)",
     prompt: "Cancel order ORD-1001 because I ordered the wrong color",
+    color: "hover:border-rose-500/40 hover:text-rose-300",
   },
   {
-    label: "🛑 Cancel In-Transit (ORD-1002)",
-    prompt: "Can I cancel order ORD-1002?",
+    icon: ShieldAlert,
+    label: "Test Guardrail (ORD-1002)",
+    prompt: "Please cancel order ORD-1002",
+    color: "hover:border-amber-500/40 hover:text-amber-300",
   },
   {
-    label: "📦 Order Details (ORD-1003)",
+    icon: Package,
+    label: "Details (ORD-1003)",
     prompt: "What items are included in my order ORD-1003?",
+    color: "hover:border-indigo-500/40 hover:text-indigo-300",
   },
 ];
 
@@ -70,10 +84,17 @@ export default function ChatInterface({
       id: "initial-welcome",
       role: "model",
       content:
-        "Hello! I am **OmniSupport AI**, your autonomous logistics and order specialist.\n\n" +
-        "I can help you look up orders, track live couriers with full checkpoint timelines, update shipping destinations before dispatch, or cancel orders.\n\n" +
+        "Hello! I am **OmniSupport AI**, your autonomous logistics and customer service specialist.\n\n" +
+        "I am directly connected to your **Supabase PostgreSQL** database and carry out real-world operations using **Google Gemini Tool Calling**.\n\n" +
+        "• **Inquire**: Ask for details on any order (e.g. `ORD-1001`, `ORD-1003`)\n" +
+        "• **Track**: Live telemetry for courier parcels (e.g. `ORD-1002` via DHL)\n" +
+        "• **Mutate Address**: Update shipping addresses for processing orders\n" +
+        "• **Guardrails**: Try cancelling a dispatched shipment to see policy enforcement in action\n\n" +
         "How can I assist you today?",
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     },
   ]);
 
@@ -82,7 +103,7 @@ export default function ChatInterface({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Handle injected prompt from sandbox panel buttons
+  // Handle injected prompt from sandbox buttons
   useEffect(() => {
     if (injectedPrompt) {
       sendMessage(injectedPrompt);
@@ -123,7 +144,6 @@ export default function ChatInterface({
     setIsLoading(true);
 
     try {
-      // Build history payload for backend
       const historyPayload = newMessages.map((m) => ({
         role: m.role,
         content: m.content,
@@ -134,17 +154,12 @@ export default function ChatInterface({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
-          messages: historyPayload.slice(0, -1), // prior history
+          messages: historyPayload.slice(0, -1),
         }),
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to get response");
-      }
-
-      // Check if any courier tracking was found in tool calls
       let trackingData: TrackingInfo | null = null;
       let orderData: OrderData | null = null;
 
@@ -212,13 +227,14 @@ export default function ChatInterface({
       ]);
     } catch (err: unknown) {
       console.error("Chat error:", err);
-      const errMsg = err instanceof Error ? err.message : "Something went wrong";
+      const errMsg =
+        err instanceof Error ? err.message : "Failed to process request";
       setMessages((prev) => [
         ...prev,
         {
           id: `error-${Date.now()}`,
           role: "model",
-          content: `⚠️ **Error Processing Request**: ${errMsg}. Please try again.`,
+          content: `⚠️ **Notice**: ${errMsg}. Please feel free to try your request again.`,
           timestamp: new Date().toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
@@ -244,7 +260,7 @@ export default function ChatInterface({
         id: "cleared-welcome",
         role: "model",
         content:
-          "Conversation restarted. Ask me anything about your orders or shipments!",
+          "Conversation cleared. How can I help you manage your orders today?",
         timestamp: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -254,73 +270,75 @@ export default function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 text-slate-100">
-      {/* Top Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/60 backdrop-blur sticky top-0 z-10">
+    <div className="flex flex-col h-full bg-[#09090b] text-zinc-100 relative overflow-hidden">
+      {/* Ambient background glow */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Top Bar for Chat Header */}
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/[0.08] bg-[#0c0c0e]/80 backdrop-blur sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 ring-1 ring-white/20">
-            <Bot className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-emerald-500 flex items-center justify-center text-white shadow-lg shadow-sky-500/20 ring-1 ring-white/20">
+            <Bot className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-white tracking-tight">
-                OmniSupport AI
-              </h1>
-              <span className="flex items-center gap-1 text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">
+              <span className="text-sm font-bold text-white tracking-tight">
+                Support Specialist
+              </span>
+              <span className="flex items-center gap-1 text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 px-2 py-0.5 rounded-full font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 Live Agent
               </span>
             </div>
-            <p className="text-xs text-slate-400">
-              Autonomous Logistics & Order Support · Gemini 2.0 Flash Tool Calling
+            <p className="text-[11px] text-zinc-400">
+              Autonomous Tool Calling · Gemini Flash · Supabase PostgreSQL
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={clearChat}
-            className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800/80 rounded-lg transition-colors cursor-pointer"
-            title="Reset conversation"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
+        <button
+          onClick={clearChat}
+          className="p-2 text-zinc-400 hover:text-rose-400 hover:bg-zinc-800/80 rounded-xl transition-all duration-200 cursor-pointer border border-transparent hover:border-white/[0.08]"
+          title="Reset conversation"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Messages Thread */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+      {/* Messages Scroll Area */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar z-0">
         {messages.map((msg) => (
           <div
             key={msg.id}
             className={cn(
-              "flex gap-3 max-w-3xl",
+              "flex gap-3 max-w-3xl animate-in fade-in duration-200",
               msg.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
             )}
           >
             {/* Avatar */}
             <div
               className={cn(
-                "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-white shadow-sm mt-0.5",
+                "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white shadow-sm mt-0.5",
                 msg.role === "user"
-                  ? "bg-slate-700 text-slate-200"
-                  : "bg-indigo-600 text-white"
+                  ? "bg-zinc-800 text-zinc-300 border border-white/[0.08]"
+                  : "bg-sky-600 text-white shadow-sky-500/20"
               )}
             >
               {msg.role === "user" ? (
-                <User className="w-4 h-4" />
+                <User className="w-3.5 h-3.5" />
               ) : (
-                <Bot className="w-4 h-4" />
+                <Bot className="w-3.5 h-3.5" />
               )}
             </div>
 
             {/* Bubble */}
             <div
               className={cn(
-                "rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-[88%] sm:max-w-[82%]",
+                "rounded-2xl px-4 py-3.5 text-sm leading-relaxed max-w-[88%] sm:max-w-[82%] relative shadow-lg",
                 msg.role === "user"
-                  ? "bg-indigo-600 text-white shadow-md rounded-tr-none"
-                  : "bg-slate-900 border border-slate-800 text-slate-200 shadow-md rounded-tl-none"
+                  ? "bg-gradient-to-tr from-sky-600 to-indigo-600 text-white rounded-tr-sm"
+                  : "bg-[#121215] border border-white/[0.08] text-zinc-200 rounded-tl-sm backdrop-blur"
               )}
             >
               {/* Tool Execution Badges */}
@@ -332,24 +350,24 @@ export default function ChatInterface({
                 </div>
               )}
 
-              {/* Message Content */}
-              <div className="whitespace-pre-wrap font-sans text-[13.5px]">
+              {/* Text Body with Clean Typography */}
+              <div className="whitespace-pre-wrap font-sans text-[13.5px] leading-relaxed">
                 {msg.content}
               </div>
 
-              {/* Courier Tracking Timeline Widget if applicable */}
+              {/* Embedded Courier Tracking Timeline Widget */}
               {msg.trackingData && (
                 <TrackingTimeline tracking={msg.trackingData} />
               )}
 
-              {/* Order Card Widget if applicable */}
+              {/* Embedded Order Card Widget */}
               {msg.orderData && <OrderCard order={msg.orderData} />}
 
               {/* Timestamp */}
               <div
                 className={cn(
-                  "text-[10px] mt-1.5",
-                  msg.role === "user" ? "text-indigo-200 text-right" : "text-slate-500"
+                  "text-[10px] mt-2 font-mono",
+                  msg.role === "user" ? "text-sky-200/70 text-right" : "text-zinc-400"
                 )}
               >
                 {msg.timestamp}
@@ -358,15 +376,21 @@ export default function ChatInterface({
           </div>
         ))}
 
-        {/* Loading Indicator */}
+        {/* Live Thinking & Tool Invocation State */}
         {isLoading && (
-          <div className="flex gap-3 max-w-2xl mr-auto">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
-              <Bot className="w-4 h-4" />
+          <div className="flex gap-3 max-w-2xl mr-auto animate-in fade-in duration-200">
+            <div className="w-7 h-7 rounded-lg bg-sky-600 text-white flex items-center justify-center shrink-0">
+              <Bot className="w-3.5 h-3.5" />
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-2 text-slate-400 text-xs">
-              <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
-              <span>Analyzing request & executing tools...</span>
+            <div className="bg-[#121215] border border-white/[0.08] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-3 text-zinc-400 text-xs shadow-lg">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-sky-400 animate-bounce [animation-delay:-0.3s]" />
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" />
+              </div>
+              <span className="text-zinc-300 font-medium">
+                Reasoning & invoking tools via Gemini API...
+              </span>
             </div>
           </div>
         )}
@@ -374,51 +398,67 @@ export default function ChatInterface({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggestion Chips */}
-      <div className="px-4 sm:px-6 py-2 border-t border-slate-900 bg-slate-950/90 overflow-x-auto flex gap-2 no-scrollbar">
-        {QUICK_SUGGESTIONS.map((s, idx) => (
-          <button
-            key={idx}
-            disabled={isLoading}
-            onClick={() => sendMessage(s.prompt)}
-            className="whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-colors shrink-0 cursor-pointer disabled:opacity-50"
-          >
-            {s.label}
-          </button>
-        ))}
+      {/* Quick Suggestion Chips Carousel */}
+      <div className="px-4 sm:px-6 py-2.5 border-t border-white/[0.06] bg-[#0c0c0e]/95 overflow-x-auto flex gap-2 no-scrollbar z-10">
+        {QUICK_SUGGESTIONS.map((s, idx) => {
+          const IconComponent = s.icon;
+          return (
+            <button
+              key={idx}
+              disabled={isLoading}
+              onClick={() => sendMessage(s.prompt)}
+              className={cn(
+                "whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-[#18181b] text-zinc-300 hover:text-white border border-white/[0.08] transition-all duration-200 shrink-0 cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1.5 shadow-sm",
+                s.color
+              )}
+            >
+              <IconComponent className="w-3.5 h-3.5" />
+              <span>{s.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Input Bar */}
-      <div className="p-4 sm:p-6 border-t border-slate-800/80 bg-slate-900/60 backdrop-blur">
-        <div className="flex items-center gap-2 max-w-4xl mx-auto">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isLoading}
-            placeholder="Ask about orders, track courier, update delivery address, or cancel..."
-            className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all disabled:opacity-50"
-          />
+      <div className="p-3.5 sm:p-5 border-t border-white/[0.08] bg-[#0c0c0e]/90 backdrop-blur z-10">
+        <div className="max-w-4xl mx-auto">
+          <div className="relative flex items-center bg-[#121215] border border-white/[0.08] focus-within:border-sky-500/50 focus-within:ring-2 focus-within:ring-sky-500/20 rounded-2xl transition-all duration-200 shadow-xl">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isLoading}
+              placeholder="Ask about orders, track courier, change address, or test cancel guardrail..."
+              className="flex-1 bg-transparent px-4 py-3.5 text-sm text-white placeholder-zinc-500 focus:outline-none transition-all disabled:opacity-50 pr-24"
+            />
 
-          <button
-            onClick={() => sendMessage()}
-            disabled={!input.trim() || isLoading}
-            className="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:hover:bg-indigo-600 cursor-pointer"
-            title="Send message"
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </button>
-        </div>
-        <div className="text-center mt-2">
-          <span className="text-[11px] text-slate-500">
-            Powered by Google Gemini 2.0 Flash Tool Calling · Next.js 16 · Prisma ORM
-          </span>
+            <div className="absolute right-2 flex items-center gap-1.5">
+              <div className="hidden sm:flex items-center gap-0.5 text-[10px] text-zinc-400 font-mono bg-zinc-800/80 px-1.5 py-1 rounded border border-white/[0.06]">
+                <span>Enter</span>
+                <CornerDownLeft className="w-2.5 h-2.5" />
+              </div>
+
+              <button
+                onClick={() => sendMessage()}
+                disabled={!input.trim() || isLoading}
+                className="p-2.5 bg-sky-500 hover:bg-sky-400 disabled:bg-zinc-800 text-zinc-950 font-bold rounded-xl transition-all duration-200 disabled:text-zinc-600 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed shadow-md shadow-sky-500/20"
+                title="Send query"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
+                ) : (
+                  <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] text-zinc-400 mt-2 px-1">
+            <span>Enterprise E-Commerce Support Engine</span>
+            <span className="font-mono text-[10px]">Gemini Flash • Supabase PostgreSQL</span>
+          </div>
         </div>
       </div>
     </div>

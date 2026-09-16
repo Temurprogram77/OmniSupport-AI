@@ -1,5 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "Missing DATABASE_URL environment variable. Please configure it in .env or your production environment."
+  );
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };

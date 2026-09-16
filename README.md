@@ -5,10 +5,10 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
-[![Google Gemini](https://img.shields.io/badge/Google%20Gemini-2.0%20Flash-4285F4?style=flat-square&logo=google)](https://ai.google.dev/)
+[![Google Gemini](https://img.shields.io/badge/Google%20Gemini-3.6%20Flash-4285F4?style=flat-square&logo=google)](https://ai.google.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
 
-OmniSupport AI is a production-grade autonomous customer support platform engineered for e-commerce and logistics workflows. Rather than functioning as a standard conversational wrapper, it uses **Google Gemini 2.0 Flash Tool Calling (Function Calling)** to execute deterministic, schema-enforced transactions against a PostgreSQL database.
+OmniSupport AI is a production-grade autonomous customer support platform engineered for e-commerce and logistics workflows. Rather than functioning as a standard conversational wrapper, it uses **Google Gemini Flash Tool Calling (Function Calling)** to execute deterministic, schema-enforced transactions against a PostgreSQL database.
 
 ---
 
@@ -26,7 +26,7 @@ OmniSupport AI is a production-grade autonomous customer support platform engine
 
 * **Framework:** Next.js 16 (App Router)
 * **Language:** TypeScript
-* **AI Orchestration:** Google Gemini 2.0 Flash API (`@google/genai` Tool / Function Calling)
+* **AI Orchestration:** Google Gemini Flash API (`@google/genai` Tool / Function Calling)
 * **Database & ORM:** Supabase (PostgreSQL), Prisma ORM
 * **State Management & Data Fetching:** Zustand, TanStack Query
 * **Styling & UI:** Tailwind CSS, Lucide Icons, clsx, tailwind-merge

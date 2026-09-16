@@ -9,7 +9,7 @@ export async function GET() {
           select: { name: true, email: true, phone: true },
         },
         items: true,
-        tracking: true,
+        courierTracking: true,
         auditLogs: {
           orderBy: { createdAt: "desc" },
           take: 5,
@@ -18,9 +18,14 @@ export async function GET() {
       orderBy: { orderNumber: "asc" },
     });
 
-    return NextResponse.json({ orders });
+    const mappedOrders = orders.map((ord) => ({
+      ...ord,
+      tracking: ord.courierTracking,
+    }));
+
+    return NextResponse.json({ orders: mappedOrders });
   } catch (error: unknown) {
-    console.error("Failed to fetch orders:", error);
+    console.error("Failed to fetch live orders from Supabase:", error);
     const message = error instanceof Error ? error.message : "Internal Server Error";
     return NextResponse.json(
       { error: "Failed to fetch orders", details: message },

@@ -46,7 +46,7 @@ export async function seedDatabase() {
           },
         ],
       },
-      tracking: {
+      courierTracking: {
         create: {
           courierName: "FedEx Ground",
           trackingNumber: "FX-98214301",
@@ -104,7 +104,7 @@ export async function seedDatabase() {
           },
         ],
       },
-      tracking: {
+      courierTracking: {
         create: {
           courierName: "DHL Express",
           trackingNumber: "DHL-88349102",
@@ -174,7 +174,7 @@ export async function seedDatabase() {
           },
         ],
       },
-      tracking: {
+      courierTracking: {
         create: {
           courierName: "UPS Ground",
           trackingNumber: "UPS-41209384",
